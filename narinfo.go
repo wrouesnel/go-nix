@@ -60,9 +60,9 @@ type NARInfo struct {
 func (info *NARInfo) Clone() *NARInfo {
 	info2 := new(NARInfo)
 	*info2 = *info
-	info.References = append([]StorePath(nil), info.References...)
-	info.Sig = append([]*Signature(nil), info.Sig...)
-	return info
+	info2.References = append([]StorePath(nil), info.References...)
+	info2.Sig = append([]*Signature(nil), info.Sig...)
+	return info2
 }
 
 // Directory returns the store directory of the store object.
