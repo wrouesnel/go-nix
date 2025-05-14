@@ -37,14 +37,19 @@ type Header struct {
 	// except the executable bits for a regular file:
 	// if any are non-zero, then the file will be marked as executable.
 	Mode fs.FileMode
-	// Size is the size of a regular file in bytes.
+	// Size is the size of a regular file in bytes
+	// or the length of LinkTarget for a symlink.
+	//
+	// [Writer.WriteHeader] will only use this field for regular files.
 	Size int64
 	// LinkTarget is the target of a symlink.
 	LinkTarget string
 	// ContentOffset is the position in the NAR file
 	// (in bytes from the beginning of the NAR file)
-	// where a regular file's data begins.
-	// The following Size bytes in the file are the regular file's content.
+	// where a regular file's data begins
+	// or a symlink's target begins.
+	// The following Size bytes in the file are the regular file's content
+	// or the symlink's target.
 	//
 	// This field is ignored by [Writer.WriteHeader].
 	ContentOffset int64

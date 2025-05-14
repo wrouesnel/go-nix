@@ -285,11 +285,13 @@ func (nr *Reader) node(hdr *Header) error {
 		if err := nr.expect(targetToken); err != nil {
 			return fmt.Errorf("symlink: %w", err)
 		}
+		hdr.ContentOffset = nr.off + 8
 		var err error
 		hdr.LinkTarget, err = nr.readString(symlinkTargetMaxLen)
 		if err != nil {
 			return fmt.Errorf("symlink target: %w", err)
 		}
+		hdr.Size = int64(len(hdr.LinkTarget))
 		hdr.Mode = modeSymlink
 		if err := nr.expect(")"); err != nil {
 			return err
