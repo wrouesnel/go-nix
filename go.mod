@@ -1,4 +1,4 @@
-module zombiezen.com/go/nix
+module github.com/wrouesnel/go-nix
 
 go 1.19
 
