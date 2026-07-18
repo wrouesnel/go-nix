@@ -304,7 +304,7 @@ func TestBufWriterString(t *testing.T) {
 		bw.string(s)
 		bw.flush()
 
-		want := make([]byte, 8+overflowSize+(stringAlign-1))
+		want := make([]byte, 8+overflowSize+(StringAlign-1))
 		binary.LittleEndian.PutUint64(want, uint64(overflowSize))
 		copy(want[8:], s)
 		if diff := cmp.Diff(want, buf.Bytes()); diff != "" {
@@ -319,7 +319,7 @@ func TestBufWriterString(t *testing.T) {
 		bw.string(s)
 		bw.flush()
 
-		want := make([]byte, 8+overflowSize+(stringAlign-1))
+		want := make([]byte, 8+overflowSize+(StringAlign-1))
 		binary.LittleEndian.PutUint64(want, uint64(overflowSize))
 		copy(want[8:], s)
 		if diff := cmp.Diff(want, buf.Bytes()); diff != "" {
@@ -395,7 +395,7 @@ func TestBufWriterPad(t *testing.T) {
 	bw.pad()
 	bw.flush()
 
-	want := bytes.Repeat([]byte{0}, bufWriterSize+stringAlign-initialOffset)
+	want := bytes.Repeat([]byte{0}, bufWriterSize+StringAlign-initialOffset)
 	if diff := cmp.Diff(want, buf.Bytes()); diff != "" {
 		t.Errorf("-want +got:\n%s", diff)
 	}

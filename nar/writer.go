@@ -277,7 +277,7 @@ type bufWriter struct {
 	// err is the first error returned by w.
 	err error
 	// buf is a temporary buffer used for writing.
-	// Its length is a multiple of stringAlign
+	// Its length is a multiple of StringAlign
 	// that is sufficient to hold any of the known tokens in the NAR format.
 	buf    [256]byte
 	bufLen int16
@@ -389,12 +389,12 @@ func (bw *bufWriter) longString(s string) {
 	bw.pad()
 }
 
-// pad writes zero bytes until bw.off+bw.bufLen is evenly divisible by stringAlign.
+// pad writes zero bytes until bw.off+bw.bufLen is evenly divisible by StringAlign.
 func (bw *bufWriter) pad() {
 	if bw.err != nil {
 		return
 	}
-	n := stringPaddingLength(int(bw.off%stringAlign) + int(bw.bufLen))
+	n := stringPaddingLength(int(bw.off%StringAlign) + int(bw.bufLen))
 	if int(bw.bufLen)+n > len(bw.buf) {
 		n -= len(bw.buf) - int(bw.bufLen)
 		for ; int(bw.bufLen) < len(bw.buf); bw.bufLen++ {

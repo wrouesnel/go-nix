@@ -30,7 +30,7 @@ type Reader struct {
 	r   io.Reader
 	off int64
 	// buf is a temporary buffer used for reading.
-	// Its length is a multiple of stringAlign
+	// Its length is a multiple of StringAlign
 	// that is sufficient to hold any of the known tokens in the NAR format.
 	buf   [16]byte
 	state int8
@@ -273,7 +273,7 @@ func (nr *Reader) node(hdr *Header) error {
 		hdr.ContentOffset = nr.off
 		nr.state = readerStateFile
 		nr.remaining = int64(unsignedSize)
-		nr.padding = int8(stringPaddingLength(int(unsignedSize % stringAlign)))
+		nr.padding = int8(stringPaddingLength(int(unsignedSize % StringAlign)))
 	case TypeDirectory:
 		if hdr.Path != "" {
 			nr.prefix = hdr.Path + "/"

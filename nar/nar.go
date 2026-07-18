@@ -110,19 +110,19 @@ const (
 	SymlinkTargetMaxLen = 4095
 )
 
-const stringAlign = 8
+const StringAlign = 8
 
 // padStringSize returns the smallest integer >= n
 // that is evenly divisible by [stringAlign].
 func padStringSize(n int) int {
-	return (n + stringAlign - 1) &^ (stringAlign - 1)
+	return (n + StringAlign - 1) &^ (StringAlign - 1)
 }
 
 // stringPaddingLength returns the difference between
 // the result of [padStringSize] of n
 // and the n.
 func stringPaddingLength(n int) int {
-	return (^n + 1) & (stringAlign - 1)
+	return (^n + 1) & (StringAlign - 1)
 }
 
 func validateFilename(name string) error {
