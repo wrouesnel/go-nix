@@ -125,7 +125,7 @@ func stringPaddingLength(n int) int {
 	return (^n + 1) & (StringAlign - 1)
 }
 
-func validateFilename(name string) error {
+func ValidateFilename(name string) error {
 	if name == "" {
 		return fmt.Errorf("empty filename")
 	}

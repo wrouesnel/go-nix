@@ -172,7 +172,7 @@ func (nr *Reader) Next() (_ *Header, err error) {
 		if err != nil {
 			return nil, fmt.Errorf("nar: directory: entry name: %w", err)
 		}
-		if err := validateFilename(name); err != nil {
+		if err := ValidateFilename(name); err != nil {
 			return nil, fmt.Errorf("nar: directory: entry name: %v", err)
 		}
 		if last := nr.nameStack[len(nr.nameStack)-1]; last >= name {

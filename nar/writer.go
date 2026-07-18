@@ -55,7 +55,7 @@ func (nw *Writer) WriteHeader(hdr *Header) (err error) {
 	if nw.bw.err != nil {
 		return nw.bw.err
 	}
-	if err := validatePath(hdr.Path); err != nil {
+	if err := ValidatePath(hdr.Path); err != nil {
 		return fmt.Errorf("nar: %w", err)
 	}
 
@@ -466,7 +466,7 @@ func formatLastPath(s string) string {
 	return s
 }
 
-func validatePath(origPath string) error {
+func ValidatePath(origPath string) error {
 	if origPath == "" {
 		return nil
 	}
@@ -479,7 +479,7 @@ func validatePath(origPath string) error {
 		if path[:elemEnd] == "" {
 			return fmt.Errorf("%q has empty elements", origPath)
 		}
-		if err := validateFilename(path[:elemEnd]); err != nil {
+		if err := ValidateFilename(path[:elemEnd]); err != nil {
 			return err
 		}
 		if elemEnd == len(path) {

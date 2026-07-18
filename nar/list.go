@@ -184,7 +184,7 @@ func (node *ListingNode) marshal(dst []byte) ([]byte, error) {
 }
 
 func (node *ListingNode) unmarshal(path string, data []byte) error {
-	if err := validatePath(path); err != nil {
+	if err := ValidatePath(path); err != nil {
 		return err
 	}
 	node.Path = path
@@ -267,7 +267,7 @@ func (node *ListingNode) unmarshal(path string, data []byte) error {
 			}
 			node.Entries = make(map[string]*ListingNode, len(rawEntries))
 			for entryName, rawNode := range rawEntries {
-				if err := validateFilename(entryName); err != nil {
+				if err := ValidateFilename(entryName); err != nil {
 					return fmt.Errorf("entries: %v", err)
 				}
 				newNode := new(ListingNode)
