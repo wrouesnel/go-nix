@@ -155,20 +155,20 @@ func (nr *Reader) Next() (_ *Header, err error) {
 				} else {
 					nr.prefix = nr.prefix[:prevSlash+len("/")]
 				}
-			case entryToken:
+			case EntryToken:
 				break popLoop
 			default:
-				return nil, fmt.Errorf("nar: directory: got %q token (expected \")\" or %q)", nr.buf[:n], entryToken)
+				return nil, fmt.Errorf("nar: directory: got %q token (expected \")\" or %q)", nr.buf[:n], EntryToken)
 			}
 		}
 
 		if err := nr.expect("("); err != nil {
 			return nil, fmt.Errorf("nar: directory: %w", err)
 		}
-		if err := nr.expect(nameToken); err != nil {
+		if err := nr.expect(NameToken); err != nil {
 			return nil, fmt.Errorf("nar: directory: %w", err)
 		}
-		name, err := nr.readString(entryNameMaxLen)
+		name, err := nr.readString(EntryNameMaxLen)
 		if err != nil {
 			return nil, fmt.Errorf("nar: directory: entry name: %w", err)
 		}
@@ -179,7 +179,7 @@ func (nr *Reader) Next() (_ *Header, err error) {
 			return nil, fmt.Errorf("nar: directory: entry name %q >= %q", last, name)
 		}
 		nr.nameStack[len(nr.nameStack)-1] = name
-		if err := nr.expect(nodeToken); err != nil {
+		if err := nr.expect(NodeToken); err != nil {
 			return nil, fmt.Errorf("nar: directory: %w", err)
 		}
 		hdr := &Header{Path: nr.prefix + name}
@@ -242,25 +242,25 @@ func (nr *Reader) node(hdr *Header) error {
 		return fmt.Errorf("type: %w", err)
 	}
 	switch string(nr.buf[:n]) {
-	case typeRegular:
+	case TypeRegular:
 		n, err := nr.readSmallString()
 		if err != nil {
 			return fmt.Errorf("regular: %w", err)
 		}
 		hdr.Mode = modeRegular
 		switch string(nr.buf[:n]) {
-		case executableToken:
+		case ExecutableToken:
 			hdr.Mode = modeExecutable
 			if err := nr.expect(""); err != nil {
 				return err
 			}
-			if err := nr.expect(contentsToken); err != nil {
+			if err := nr.expect(ContentsToken); err != nil {
 				return err
 			}
-		case contentsToken:
+		case ContentsToken:
 			// Do nothing.
 		default:
-			return fmt.Errorf("regular: got %q token (expected %q or %q)", nr.buf[:n], executableToken, contentsToken)
+			return fmt.Errorf("regular: got %q token (expected %q or %q)", nr.buf[:n], ExecutableToken, ContentsToken)
 		}
 		unsignedSize, err := nr.readInt()
 		if err != nil {
@@ -274,20 +274,20 @@ func (nr *Reader) node(hdr *Header) error {
 		nr.state = readerStateFile
 		nr.remaining = int64(unsignedSize)
 		nr.padding = int8(stringPaddingLength(int(unsignedSize % stringAlign)))
-	case typeDirectory:
+	case TypeDirectory:
 		if hdr.Path != "" {
 			nr.prefix = hdr.Path + "/"
 		}
 		hdr.Mode = modeDirectory
 		nr.state = readerStateDirectoryStart
 		nr.nameStack = append(nr.nameStack, "")
-	case typeSymlink:
-		if err := nr.expect(targetToken); err != nil {
+	case TypeSymlink:
+		if err := nr.expect(TargetToken); err != nil {
 			return fmt.Errorf("symlink: %w", err)
 		}
 		hdr.ContentOffset = nr.off + 8
 		var err error
-		hdr.LinkTarget, err = nr.readString(symlinkTargetMaxLen)
+		hdr.LinkTarget, err = nr.readString(SymlinkTargetMaxLen)
 		if err != nil {
 			return fmt.Errorf("symlink target: %w", err)
 		}

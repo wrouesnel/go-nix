@@ -90,24 +90,24 @@ func (fi headerFileInfo) Name() string {
 const (
 	Magic = "nix-archive-1"
 
-	typeRegular   = "regular"
-	typeDirectory = "directory"
-	typeSymlink   = "symlink"
+	TypeRegular   = "regular"
+	TypeDirectory = "directory"
+	TypeSymlink   = "symlink"
 
-	typeToken = "type"
+	TypeToken = "type"
 
-	executableToken = "executable"
-	contentsToken   = "contents"
-	targetToken     = "target"
+	ExecutableToken = "executable"
+	ContentsToken   = "contents"
+	TargetToken     = "target"
 
-	entryToken = "entry"
-	nameToken  = "name"
-	nodeToken  = "node"
+	EntryToken = "entry"
+	NameToken  = "name"
+	NodeToken  = "node"
 )
 
 const (
-	entryNameMaxLen     = 255
-	symlinkTargetMaxLen = 4095
+	EntryNameMaxLen     = 255
+	SymlinkTargetMaxLen = 4095
 )
 
 const stringAlign = 8
@@ -129,8 +129,8 @@ func validateFilename(name string) error {
 	if name == "" {
 		return fmt.Errorf("empty filename")
 	}
-	if len(name) > entryNameMaxLen {
-		return fmt.Errorf("filename longer than %d characters", entryNameMaxLen)
+	if len(name) > EntryNameMaxLen {
+		return fmt.Errorf("filename longer than %d characters", EntryNameMaxLen)
 	}
 	if !utf8.ValidString(name) {
 		return fmt.Errorf("filename is not UTF-8")

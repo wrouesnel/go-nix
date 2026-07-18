@@ -67,8 +67,8 @@ func (nw *Writer) WriteHeader(hdr *Header) (err error) {
 	case writerStateRoot:
 		if hdr.Path != "" {
 			nw.bw.string("(")
-			nw.bw.string(typeToken)
-			nw.bw.string(typeDirectory)
+			nw.bw.string(TypeToken)
+			nw.bw.string(TypeDirectory)
 			nw.lastPath = ""
 			nw.lastPathDir = true
 		}
@@ -122,14 +122,14 @@ func (nw *Writer) node(hdr *Header) error {
 	}
 	for newDirs != "" {
 		name := firstPathComponent(newDirs)
-		nw.bw.string(entryToken)
+		nw.bw.string(EntryToken)
 		nw.bw.string("(")
-		nw.bw.string(nameToken)
+		nw.bw.string(NameToken)
 		nw.bw.string(name)
-		nw.bw.string(nodeToken)
+		nw.bw.string(NodeToken)
 		nw.bw.string("(")
-		nw.bw.string(typeToken)
-		nw.bw.string(typeDirectory)
+		nw.bw.string(TypeToken)
+		nw.bw.string(TypeDirectory)
 
 		newDirs = newDirs[len(name):]
 		if len(newDirs) >= len("/") {
@@ -138,36 +138,36 @@ func (nw *Writer) node(hdr *Header) error {
 	}
 	if hdr.Path != "" {
 		name := slashpath.Base(hdr.Path)
-		nw.bw.string(entryToken)
+		nw.bw.string(EntryToken)
 		nw.bw.string("(")
-		nw.bw.string(nameToken)
+		nw.bw.string(NameToken)
 		nw.bw.string(name)
-		nw.bw.string(nodeToken)
+		nw.bw.string(NodeToken)
 	}
 
 	switch hdr.Mode.Type() {
 	case 0: // regular
 		nw.bw.string("(")
-		nw.bw.string(typeToken)
-		nw.bw.string(typeRegular)
+		nw.bw.string(TypeToken)
+		nw.bw.string(TypeRegular)
 		if hdr.Mode&0o111 != 0 {
-			nw.bw.string(executableToken)
+			nw.bw.string(ExecutableToken)
 			nw.bw.string("")
 		}
-		nw.bw.string(contentsToken)
+		nw.bw.string(ContentsToken)
 		nw.bw.uint64(uint64(hdr.Size))
 		nw.state = writerStateFile
 		nw.remaining = hdr.Size
 	case fs.ModeDir:
 		nw.bw.string("(")
-		nw.bw.string(typeToken)
-		nw.bw.string(typeDirectory)
+		nw.bw.string(TypeToken)
+		nw.bw.string(TypeDirectory)
 		nw.state = writerStateSpecial
 	case fs.ModeSymlink:
 		nw.bw.string("(")
-		nw.bw.string(typeToken)
-		nw.bw.string(typeSymlink)
-		nw.bw.string(targetToken)
+		nw.bw.string(TypeToken)
+		nw.bw.string(TypeSymlink)
+		nw.bw.string(TargetToken)
 		nw.bw.string(hdr.LinkTarget)
 		nw.bw.string(")")
 		if hdr.Path != "" {
