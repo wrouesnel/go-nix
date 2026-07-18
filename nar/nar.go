@@ -88,7 +88,7 @@ func (fi headerFileInfo) Name() string {
 
 // Tokens
 const (
-	magic = "nix-archive-1"
+	Magic = "nix-archive-1"
 
 	typeRegular   = "regular"
 	typeDirectory = "directory"

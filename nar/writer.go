@@ -61,7 +61,7 @@ func (nw *Writer) WriteHeader(hdr *Header) (err error) {
 
 	switch nw.state {
 	case writerStateInit:
-		nw.bw.string(magic)
+		nw.bw.string(Magic)
 		nw.state = writerStateRoot
 		fallthrough
 	case writerStateRoot:

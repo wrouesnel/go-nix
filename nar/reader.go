@@ -82,7 +82,7 @@ func (nr *Reader) Next() (_ *Header, err error) {
 
 	switch nr.state {
 	case readerStateFirst:
-		if err := nr.expect(magic); err != nil {
+		if err := nr.expect(Magic); err != nil {
 			return nil, fmt.Errorf("nar: magic number: %w", err)
 		}
 		hdr := new(Header)
