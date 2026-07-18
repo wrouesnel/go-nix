@@ -330,7 +330,7 @@ func (bw *bufWriter) string(s string) {
 	if len(s) == 0 || bw.err != nil {
 		return
 	}
-	n := padStringSize(len(s))
+	n := PadStringSize(len(s))
 	if n > len(bw.buf) {
 		bw.longString(s)
 		return
@@ -394,7 +394,7 @@ func (bw *bufWriter) pad() {
 	if bw.err != nil {
 		return
 	}
-	n := stringPaddingLength(int(bw.off%StringAlign) + int(bw.bufLen))
+	n := StringPaddingLength(int(bw.off%StringAlign) + int(bw.bufLen))
 	if int(bw.bufLen)+n > len(bw.buf) {
 		n -= len(bw.buf) - int(bw.bufLen)
 		for ; int(bw.bufLen) < len(bw.buf); bw.bufLen++ {

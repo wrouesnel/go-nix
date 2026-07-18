@@ -112,16 +112,16 @@ const (
 
 const StringAlign = 8
 
-// padStringSize returns the smallest integer >= n
+// PadStringSize returns the smallest integer >= n
 // that is evenly divisible by [stringAlign].
-func padStringSize(n int) int {
+func PadStringSize(n int) int {
 	return (n + StringAlign - 1) &^ (StringAlign - 1)
 }
 
-// stringPaddingLength returns the difference between
+// StringPaddingLength returns the difference between
 // the result of [padStringSize] of n
 // and the n.
-func stringPaddingLength(n int) int {
+func StringPaddingLength(n int) int {
 	return (^n + 1) & (StringAlign - 1)
 }
 

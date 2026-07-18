@@ -273,7 +273,7 @@ func (nr *Reader) node(hdr *Header) error {
 		hdr.ContentOffset = nr.off
 		nr.state = readerStateFile
 		nr.remaining = int64(unsignedSize)
-		nr.padding = int8(stringPaddingLength(int(unsignedSize % StringAlign)))
+		nr.padding = int8(StringPaddingLength(int(unsignedSize % StringAlign)))
 	case TypeDirectory:
 		if hdr.Path != "" {
 			nr.prefix = hdr.Path + "/"
@@ -356,7 +356,7 @@ func (nr *Reader) readSmallString() (n int, err error) {
 	if nn > uint64(len(nr.buf)) {
 		return 0, fmt.Errorf("got string of length %d (max %d in this context)", nn, len(nr.buf))
 	}
-	if err := nr.read(nr.buf[:padStringSize(int(nn))]); err != nil {
+	if err := nr.read(nr.buf[:PadStringSize(int(nn))]); err != nil {
 		return 0, err
 	}
 	return int(nn), nil
@@ -370,7 +370,7 @@ func (nr *Reader) readString(maxLength int) (string, error) {
 	if n > uint64(maxLength) {
 		return "", fmt.Errorf("got string of length %d (max %d in this context)", n, maxLength)
 	}
-	buf := make([]byte, padStringSize(int(n)))
+	buf := make([]byte, PadStringSize(int(n)))
 	if err := nr.read(buf); err != nil {
 		return "", err
 	}
