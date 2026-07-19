@@ -3,6 +3,7 @@ package nar
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -236,6 +237,45 @@ func TestWriter(t *testing.T) {
 	})
 }
 
+func TestSparseWriter(t *testing.T) {
+	// Test the sparse allocator mode produces similar results to regular writing.
+	for _, test := range narTests {
+		if test.ignoreContents || test.err {
+			continue
+		}
+		t.Run(fmt.Sprintf("%sWithSparseAllocation", test.name), func(t *testing.T) {
+			buf := new(bytes.Buffer)
+			nw := NewWriter(buf, SparseAllocate(nil))
+			for i, ent := range test.want {
+				if err := nw.WriteHeader(ent.header); err != nil {
+					t.Errorf("WriteHeader#%d(%+v): %v", i+1, ent.header, err)
+				}
+				if ent.header.Mode.IsRegular() {
+					if got := nw.Offset(); got != ent.header.ContentOffset {
+						t.Errorf("Offset() = %d; want %d", got, ent.header.ContentOffset)
+					}
+				}
+				//if ent.data != "" {
+				//	if _, err := io.WriteString(nw, ent.data); err != nil {
+				//		t.Errorf("io.WriteString#%d(w, %q): %v", i+1, ent.data, err)
+				//	}
+				//}
+			}
+			if err := nw.Close(); err != nil {
+				t.Error("Close:", err)
+			}
+			// Unlike the regular test, we should read 0's of the correct length.
+			want, err := os.ReadFile(filepath.Join("testdata", test.dataFile))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(want, buf.Bytes(), cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("-want +got:\n%s", diff)
+			}
+		})
+	}
+}
+
 func BenchmarkWriter(b *testing.B) {
 	buf := new(bytes.Buffer)
 
@@ -292,17 +332,17 @@ func BenchmarkWriter(b *testing.B) {
 	}
 }
 
-const bufWriterSize = len(bufWriter{}.buf)
+const bufWriterSize = len(BufWriter{}.buf)
 
 func TestBufWriterString(t *testing.T) {
 	const overflowSize = bufWriterSize + 1
 
 	t.Run("LongString", func(t *testing.T) {
 		buf := new(bytes.Buffer)
-		bw := &bufWriter{w: buf}
+		bw := &BufWriter{w: buf}
 		s := strings.Repeat("x", overflowSize)
-		bw.string(s)
-		bw.flush()
+		bw.String(s)
+		bw.Flush()
 
 		want := make([]byte, 8+overflowSize+(StringAlign-1))
 		binary.LittleEndian.PutUint64(want, uint64(overflowSize))
@@ -314,10 +354,10 @@ func TestBufWriterString(t *testing.T) {
 
 	t.Run("LongStringWithoutWriteString", func(t *testing.T) {
 		buf := new(bytes.Buffer)
-		bw := &bufWriter{w: onlyWriter{buf}}
+		bw := &BufWriter{w: onlyWriter{buf}}
 		s := strings.Repeat("x", overflowSize)
-		bw.string(s)
-		bw.flush()
+		bw.String(s)
+		bw.Flush()
 
 		want := make([]byte, 8+overflowSize+(StringAlign-1))
 		binary.LittleEndian.PutUint64(want, uint64(overflowSize))
@@ -331,21 +371,21 @@ func TestBufWriterString(t *testing.T) {
 		const badBits = 0xbaadf00dbaadf00d
 
 		buf := new(bytes.Buffer)
-		bw := &bufWriter{w: onlyWriter{buf}}
+		bw := &BufWriter{w: onlyWriter{buf}}
 		// Fill buffer with garbage.
 		for i := 0; i < bufWriterSize/8; i++ {
-			bw.uint64(badBits)
+			bw.Uint64(badBits)
 		}
 		// Write bytes to misalign by 1 byte.
 		if _, err := bw.Write(bytes.Repeat([]byte("x"), 7)); err != nil {
 			t.Fatal(err)
 		}
-		bw.pad()
+		bw.Pad()
 		// Fill to right next to end.
 		const yLen = bufWriterSize - 8*3
-		bw.string(strings.Repeat("y", yLen))
-		bw.string("z")
-		bw.flush()
+		bw.String(strings.Repeat("y", yLen))
+		bw.String("z")
+		bw.Flush()
 
 		want := make([]byte, 0, bufWriterSize+8+bufWriterSize)
 		for i := 0; i < bufWriterSize/8; i++ {
@@ -370,12 +410,12 @@ func TestBufWriterString(t *testing.T) {
 
 func TestBufWriterUint64(t *testing.T) {
 	buf := new(bytes.Buffer)
-	bw := &bufWriter{
+	bw := &BufWriter{
 		w:      buf,
 		bufLen: int16(bufWriterSize) - 1,
 	}
-	bw.uint64(42)
-	bw.flush()
+	bw.Uint64(42)
+	bw.Flush()
 
 	want := bytes.Repeat([]byte{0}, bufWriterSize)
 	want = binary.LittleEndian.AppendUint64(want, 42)
@@ -387,13 +427,13 @@ func TestBufWriterUint64(t *testing.T) {
 func TestBufWriterPad(t *testing.T) {
 	buf := new(bytes.Buffer)
 	const initialOffset = 2
-	bw := &bufWriter{
+	bw := &BufWriter{
 		w:      buf,
 		off:    initialOffset,
 		bufLen: int16(bufWriterSize) - 1,
 	}
-	bw.pad()
-	bw.flush()
+	bw.Pad()
+	bw.Flush()
 
 	want := bytes.Repeat([]byte{0}, bufWriterSize+StringAlign-initialOffset)
 	if diff := cmp.Diff(want, buf.Bytes()); diff != "" {
@@ -494,7 +534,7 @@ func TestTreeDelta(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		pop, newDirs, err := treeDelta(test.oldPath, test.oldIsDir, test.newPath)
+		pop, newDirs, err := TreeDelta(test.oldPath, test.oldIsDir, test.newPath)
 		if pop != test.pop || newDirs != test.newDirs || (err != nil) != test.err {
 			errString := "<nil>"
 			if test.err {

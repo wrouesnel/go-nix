@@ -17,16 +17,38 @@ import (
 // [builtins.filterSource]: https://nixos.org/manual/nix/stable/language/builtins.html#builtins-filterSource
 type SourceFilterFunc func(path string, mode fs.FileMode) bool
 
+// DumpPathOptions allow modifying the behavior of the DumpPath and DumpPathFilter functions.
+type DumpPathOptions func(d *dumpPathOptions)
+
+type dumpPathOptions struct {
+	writerOptions
+}
+
+// SparseAllocate requests the NAR be sparse allocated. w io.Writer must be a seekable OS-file.
+func (d *dumpPathOptions) SparseAllocate() DumpPathOptions {
+	return func(d *dumpPathOptions) {
+		d.sparseAllocate = true
+	}
+}
+
+// PathCallback registers a callback to be used everytime a path is allocated (but potentially not written)
+// by the Dumper.
+func (d *dumpPathOptions) PathCallback(cb func(header *Header, offset int64)) DumpPathOptions {
+	return func(d *dumpPathOptions) {
+		d.callback = cb
+	}
+}
+
 // DumpPath will serialize a path on the local file system to NAR format,
 // and write it to the passed writer.
-func DumpPath(w io.Writer, path string) error {
-	return DumpPathFilter(w, path, nil)
+func DumpPath(w io.Writer, path string, options ...DumpPathOptions) error {
+	return DumpPathFilter(w, path, nil, options...)
 }
 
 // DumpPathFilter will serialize a path on the local file system to NAR format,
 // and write it to the passed writer, filtering out any files where the filter
 // function returns false.
-func DumpPathFilter(w io.Writer, path string, filter SourceFilterFunc) error {
+func DumpPathFilter(w io.Writer, path string, filter SourceFilterFunc, options ...DumpPathOptions) error {
 	info, err := os.Lstat(path)
 	if err != nil {
 		return fmt.Errorf("dump nar: %w", err)
@@ -51,6 +73,8 @@ type Dumper struct {
 	FilterFunc SourceFilterFunc
 	// ReadLink returns the link target of the given path of the filesystem.
 	ReadLink func(string) (string, error)
+	// options is the supplied options configuration from when the dumper was initialized.
+	options dumpPathOptions
 }
 
 // Dump serializes an object in the given filesystem to NAR format,
