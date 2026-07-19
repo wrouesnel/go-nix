@@ -239,13 +239,46 @@ func TestWriter(t *testing.T) {
 
 func TestSparseWriter(t *testing.T) {
 	// Test the sparse allocator mode produces similar results to regular writing.
+
+	tempDir := t.TempDir()
+
 	for _, test := range narTests {
 		if test.ignoreContents || test.err {
 			continue
 		}
 		t.Run(fmt.Sprintf("%sWithSparseAllocation", test.name), func(t *testing.T) {
-			buf := new(bytes.Buffer)
-			nw := NewWriter(buf, SparseAllocate(nil))
+			// Create a temp NAR file
+			narPath := filepath.Join(tempDir, fmt.Sprintf("%s.nar", t.Name()))
+			if err := os.MkdirAll(filepath.Dir(narPath), os.FileMode(0777)); err != nil {
+				t.Fatal(err)
+			}
+			// Open as create/write only
+			narFile, err := os.OpenFile(narPath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, os.FileMode(0777))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer narFile.Close()
+
+			// Unlike the regular test, we should read 0's of the correct length.
+			want, err := os.ReadFile(filepath.Join("testdata", test.dataFile))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			cb := func(hdr Header) error {
+				// For the test case, read the file content out of the example NAR and
+				// emplace it into the pre-allocated space here.
+				if _, err := narFile.Seek(hdr.ContentOffset, io.SeekStart); err != nil {
+					return err
+				}
+				if _, err := io.Copy(narFile, bytes.NewBuffer(want[hdr.ContentOffset:hdr.ContentOffset+hdr.Size])); err != nil {
+					return err
+				}
+				// No need to reset the pointer since it should already be properly positioned in this case.
+				return nil
+			}
+
+			nw := NewWriter(narFile, SparseAllocate(cb))
 			for i, ent := range test.want {
 				if err := nw.WriteHeader(ent.header); err != nil {
 					t.Errorf("WriteHeader#%d(%+v): %v", i+1, ent.header, err)
@@ -255,21 +288,17 @@ func TestSparseWriter(t *testing.T) {
 						t.Errorf("Offset() = %d; want %d", got, ent.header.ContentOffset)
 					}
 				}
-				//if ent.data != "" {
-				//	if _, err := io.WriteString(nw, ent.data); err != nil {
-				//		t.Errorf("io.WriteString#%d(w, %q): %v", i+1, ent.data, err)
-				//	}
-				//}
 			}
 			if err := nw.Close(); err != nil {
 				t.Error("Close:", err)
 			}
-			// Unlike the regular test, we should read 0's of the correct length.
-			want, err := os.ReadFile(filepath.Join("testdata", test.dataFile))
+
+			got, err := os.ReadFile(narPath)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff(want, buf.Bytes(), cmpopts.EquateEmpty()); diff != "" {
+
+			if diff := cmp.Diff(want, got, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("-want +got:\n%s", diff)
 			}
 		})

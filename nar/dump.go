@@ -25,17 +25,10 @@ type dumpPathOptions struct {
 }
 
 // SparseAllocate requests the NAR be sparse allocated. w io.Writer must be a seekable OS-file.
-func (d *dumpPathOptions) SparseAllocate() DumpPathOptions {
+func (d *dumpPathOptions) SparseAllocate(allocateCallback func(header Header) error) DumpPathOptions {
 	return func(d *dumpPathOptions) {
 		d.sparseAllocate = true
-	}
-}
-
-// PathCallback registers a callback to be used everytime a path is allocated (but potentially not written)
-// by the Dumper.
-func (d *dumpPathOptions) PathCallback(cb func(header *Header, offset int64)) DumpPathOptions {
-	return func(d *dumpPathOptions) {
-		d.callback = cb
+		d.allocateCallback = allocateCallback
 	}
 }
 

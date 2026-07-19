@@ -31,27 +31,19 @@ const (
 type WriterOptions func(options *Writer)
 
 type writerOptions struct {
-	// callback is an optional callback function to call for each written header.
-	callback func(header *Header, offset int64)
 	// sparseAllocate when true causes WriteHeader to also trigger immediate allocation
 	// of space for the file content without actually writing anything. Allocation happens
 	// after callback is run. It is an error to call Write when sparseAllocate is enabled.
 	sparseAllocate bool
 	// allocateCallback provides a callback which is run _after_ the writer has allocated space
 	// for content.
-	allocateCallback func(header *Header, offset int64)
+	allocateCallback func(header Header) error
 }
 
-func SparseAllocate(allocateCallback func(header *Header, offset int64)) WriterOptions {
+func SparseAllocate(allocateCallback func(header Header) error) WriterOptions {
 	return func(w *Writer) {
 		w.sparseAllocate = true
 		w.allocateCallback = allocateCallback
-	}
-}
-
-func Callback(callback func(header *Header, offset int64)) WriterOptions {
-	return func(w *Writer) {
-		w.callback = callback
 	}
 }
 
@@ -68,6 +60,8 @@ type Writer struct {
 	remaining int64
 	// lastPath is the path of the last file system object written to the archive.
 	lastPath string
+	// lastHeader is the last file header which was written to the archive by WriteHeader
+	lastHeader Header
 	// writerOptions are user modifiable configurables to the behavior of the writer
 	writerOptions
 }
@@ -124,6 +118,15 @@ func (nw *Writer) WriteHeader(hdr *Header) (err error) {
 		if nw.lastPath == "" {
 			return fmt.Errorf("nar: archive root is a file")
 		}
+
+		// In sparse allocation mode, calling Write() is not allowed - so we need
+		// to allocate the file here.
+		if nw.remaining > 0 && nw.sparseAllocate {
+			if err := nw.allocateFile(); err != nil {
+				return err
+			}
+		}
+
 		if nw.remaining > 0 {
 			return fmt.Errorf("nar: %d bytes remaining on %s", nw.remaining, FormatLastPath(nw.lastPath))
 		}
@@ -143,11 +146,6 @@ func (nw *Writer) WriteHeader(hdr *Header) (err error) {
 		return fmt.Errorf("nar: root file system object already written")
 	default:
 		panic("unreachable")
-	}
-
-	// Invoke the callback function if registered
-	if nw.callback != nil {
-		nw.callback(hdr, nw.Offset())
 	}
 
 	return nil
@@ -226,35 +224,42 @@ func (nw *Writer) node(hdr *Header) error {
 	nw.bw.Flush()
 	nw.lastPath = hdr.Path
 	nw.lastPathDir = hdr.Mode.IsDir()
-
-	// If we're sparse allocating, then now's the time to do it
-	if nw.sparseAllocate && nw.state == writerStateFile {
-		// Get the position of the start of the file (most likely the user is about to use
-		// allocateCallback to start backfilling the data)
-		fileContentOffset := nw.Offset()
-		if osFile, ok := nw.bw.w.(*os.File); !ok {
-			// Expand the file to the new size
-			if err := osFile.Truncate(nw.bw.off + nw.remaining); err != nil {
-				return err
-			}
-			// Seek to the new logically empty location
-			if _, err := osFile.Seek(io.SeekCurrent, int(nw.remaining)); err != nil {
-				return err
-			}
-			// We have now finished "writing"
-			nw.remaining = 0
-			if nw.allocateCallback != nil {
-				// Call the allocateCallback and check the user restores the file position correctly
-				// (they should actually just open a new file handle for backfilling).
-				nw.allocateCallback(hdr, fileContentOffset)
-			}
-		} else {
-			// Error: can't sparse allocate with something which doesn't support giving us a file path.
-			return ErrNotSparseAllocatable
-		}
-	}
+	// Record the last header
+	nw.lastHeader = *hdr
+	nw.lastHeader.ContentOffset = nw.Offset()
 
 	return nw.bw.err
+}
+
+// allocateFile handles allocating space in the NAR file to hold future content when sparseAllocation mode
+// is used.
+func (nw *Writer) allocateFile() error {
+	// Get the position of the start of the file (most likely the user is about to use
+	// allocateCallback to start backfilling the data)
+	if osFile, ok := nw.bw.w.(*os.File); ok {
+		// Expand the file to the new size
+		if err := osFile.Truncate(nw.bw.off + nw.remaining); err != nil {
+			return err
+		}
+		// Seek to the new logically empty location
+		if _, err := osFile.Seek(nw.remaining, io.SeekCurrent); err != nil {
+			return err
+		}
+		// We have now finished "writing"
+		nw.bw.off += nw.remaining
+		nw.remaining = 0
+		if nw.allocateCallback != nil {
+			// Call the allocateCallback so the user can either populate the file or
+			// record it for later or whatever they're doing.
+			if err := nw.allocateCallback(nw.lastHeader); err != nil {
+				return err
+			}
+		}
+	} else {
+		// Error: can't sparse allocate with something which doesn't support giving us a file path.
+		return ErrNotSparseAllocatable
+	}
+	return nil
 }
 
 // Write writes to the current file in the NAR archive.
@@ -309,6 +314,14 @@ func (nw *Writer) Close() error {
 	case writerStateInit, writerStateRoot:
 		return fmt.Errorf("nar: close: no object written")
 	case writerStateFile:
+		// In sparse allocation mode, calling Write() is not allowed - so we need
+		// to allocate the file here.
+		if nw.remaining > 0 && nw.sparseAllocate {
+			if err := nw.allocateFile(); err != nil {
+				return err
+			}
+		}
+
 		if nw.remaining > 0 {
 			return fmt.Errorf("nar: close: %d bytes remaining on %s", nw.remaining, FormatLastPath(nw.lastPath))
 		}
