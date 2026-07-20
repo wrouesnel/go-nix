@@ -21,14 +21,16 @@ type SourceFilterFunc func(path string, mode fs.FileMode) bool
 type DumpPathOptions func(d *dumpPathOptions)
 
 type dumpPathOptions struct {
-	writerOptions
+	writerOptions []WriterOptions
 }
 
-// SparseAllocate requests the NAR be sparse allocated. w io.Writer must be a seekable OS-file.
-func (d *dumpPathOptions) SparseAllocate(allocateCallback func(header Header) error) DumpPathOptions {
+// WriterOption applies WriterOptions to a Dumper
+func WriterOption(writerOption WriterOptions) DumpPathOptions {
 	return func(d *dumpPathOptions) {
-		d.sparseAllocate = true
-		d.allocateCallback = allocateCallback
+		if d.writerOptions == nil {
+			d.writerOptions = make([]WriterOptions, 0)
+		}
+		d.writerOptions = append(d.writerOptions, writerOption)
 	}
 }
 
@@ -42,13 +44,18 @@ func DumpPath(w io.Writer, path string, options ...DumpPathOptions) error {
 // and write it to the passed writer, filtering out any files where the filter
 // function returns false.
 func DumpPathFilter(w io.Writer, path string, filter SourceFilterFunc, options ...DumpPathOptions) error {
+	dpo := new(dumpPathOptions)
+	for _, opt := range options {
+		opt(dpo)
+	}
+
 	info, err := os.Lstat(path)
 	if err != nil {
 		return fmt.Errorf("dump nar: %w", err)
 	}
 	parent := filepath.Dir(path)
 	return dump(filepath.Base(path), fs.FileInfoToDirEntry(info), &dumpOptions{
-		nw:         NewWriter(w),
+		nw:         NewWriter(w, dpo.writerOptions...),
 		filterFunc: filter,
 		fsys:       os.DirFS(parent),
 		fsPathToFilterPath: func(p string) string {
